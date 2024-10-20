@@ -1,0 +1,35 @@
+openapi: 3.0.0
+info:
+  title: URL shortener API
+  version: 1.0.0
+servers:
+  - url: localhost:8080
+    description: Dev env
+paths:
+  /api/url/shorten:
+    post:
+      summary: Return shortened version of a URL 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                long_url:
+                  type: string
+                  description: url to shorten
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  short_url:
+                    type: string
+                    description: shortened url
+        '400':
+          description: Some parameters are incorrect
+        '500':
+          description: Internal server error

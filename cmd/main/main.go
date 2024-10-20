@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/AlphaExplorer0/StoikUrlShortenerAPI/api"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -88,14 +89,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	shortenerHandler := api.ShortenerHandler{Logger: logger}
+
 	router := gin.New()
 	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	router.Use(ginzap.RecoveryWithZap(logger, true))
-	router.POST("/url", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
+
+	router.POST("/api/url/shorten", shortenerHandler.Handle)
 
 	logger.Fatal("url shortener service crashed", zap.Error(router.Run(fmt.Sprintf("%s:%s", config.ServerAddress, config.Port))))
 }
