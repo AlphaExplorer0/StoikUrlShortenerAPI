@@ -13,8 +13,13 @@ type ShortenRequest struct {
 	LongUrl string `json:"long_url" binding:"required"`
 }
 
+type ShortenerService interface {
+	ShortenURL(url string) string
+}
+
 type ShortenerHandler struct {
-	Logger *zap.Logger
+	Logger  *zap.Logger
+	Service ShortenerService
 }
 
 func (sh *ShortenerHandler) Handle(c *gin.Context) {
@@ -32,5 +37,7 @@ func (sh *ShortenerHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, map[string]string{"short_url": "http://ok"})
+	tiny := sh.Service.ShortenURL(body.LongUrl)
+
+	c.JSON(http.StatusOK, map[string]string{"short_url": tiny})
 }

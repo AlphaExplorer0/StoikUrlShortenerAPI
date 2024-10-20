@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AlphaExplorer0/StoikUrlShortenerAPI/api"
+	"github.com/AlphaExplorer0/StoikUrlShortenerAPI/service"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -89,7 +90,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	shortenerHandler := api.ShortenerHandler{Logger: logger}
+	shortenerService := service.NewShortenerService(logger)
+	shortenerHandler := api.ShortenerHandler{Logger: logger, Service: shortenerService}
 
 	router := gin.New()
 	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
