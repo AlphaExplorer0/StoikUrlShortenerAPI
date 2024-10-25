@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +18,7 @@ import (
 func Test_Should_Return_HTTP200_When_payload_Is_Valid(t *testing.T) {
 
 	mockedShortener := new(mockShortenerService)
-	mockedShortener.On("ShortenURL", mock.Anything).Return("http://6JfaUfk", nil)
+	mockedShortener.On("ShortenURL", mock.Anything, mock.Anything).Return("http://6JfaUfk", nil)
 
 	sh := ShortenerHandler{Logger: zap.NewNop(), Service: mockedShortener}
 
@@ -61,7 +62,7 @@ type mockShortenerService struct {
 	mock.Mock
 }
 
-func (mock *mockShortenerService) ShortenURL(url string) string {
-	args := mock.Called(url)
-	return args.Get(0).(string)
+func (mock *mockShortenerService) ShortenURL(ctx context.Context, url string) (string, error) {
+	args := mock.Called(ctx, url)
+	return args.Get(0).(string), args.Error(1)
 }
