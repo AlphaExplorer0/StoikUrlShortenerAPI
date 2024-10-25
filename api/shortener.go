@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,7 +15,7 @@ type ShortenRequest struct {
 }
 
 type ShortenerService interface {
-	ShortenURL(url string) string
+	ShortenURL(ctx context.Context, url string) (string, error)
 }
 
 type ShortenerHandler struct {
@@ -37,7 +38,11 @@ func (sh *ShortenerHandler) Handle(c *gin.Context) {
 		return
 	}
 
-	tiny := sh.Service.ShortenURL(body.LongUrl)
+	tiny, err := sh.Service.ShortenURL(c.Request.Context(), body.LongUrl)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
 
 	c.JSON(http.StatusOK, map[string]string{"short_url": tiny})
 }

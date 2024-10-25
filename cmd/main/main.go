@@ -1,14 +1,18 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
 	"github.com/AlphaExplorer0/StoikUrlShortenerAPI/api"
+	"github.com/AlphaExplorer0/StoikUrlShortenerAPI/repository"
 	"github.com/AlphaExplorer0/StoikUrlShortenerAPI/service"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -90,7 +94,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	shortenerService := service.NewShortenerService(logger)
+	db, err := sql.Open("pgx", "postgresql://postgres:postgres@"+config.DBHost+":"+config.DBPort+"/"+config.DBName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	err = initDBtables(db)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	shortenerStorage := repository.NewUrlStorage(db)
+	shortenerService := service.NewShortenerService(logger, shortenerStorage)
 	shortenerHandler := api.ShortenerHandler{Logger: logger, Service: shortenerService}
 
 	router := gin.New()
@@ -100,4 +117,24 @@ func main() {
 	router.POST("/api/url/shorten", shortenerHandler.Handle)
 
 	logger.Fatal("url shortener service crashed", zap.Error(router.Run(fmt.Sprintf("%s:%s", config.ServerAddress, config.Port))))
+}
+
+func initDBtables(db *sql.DB) error {
+	_, err := db.Exec(
+		`CREATE TABLE IF NOT EXISTS shortUrls (
+		 id SERIAL PRIMARY KEY,
+		 base_url TEXT NOT NULL,
+		 short_url TEXT NOT NULL,
+		 created_at TIMESTAMPTZ,
+		 CONSTRAINT unique_short_url UNIQUE (short_url)
+		 )`)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(
+		`CREATE index idx_shorts ON shortUrls (base_url)`)
+
+	return err
 }
