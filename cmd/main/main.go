@@ -112,6 +112,10 @@ func main() {
 	shortenerHandler := api.ShortenerHandler{Logger: logger, Service: shortenerService}
 	redirectHandler := api.RedirectHandler{Logger: logger, Service: redirectService}
 
+	expirationJob := service.NewExpirationService(logger, shortenerStorage)
+	expirationJob.Start()
+	defer expirationJob.Stop()
+
 	router := gin.New()
 	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	router.Use(ginzap.RecoveryWithZap(logger, true))

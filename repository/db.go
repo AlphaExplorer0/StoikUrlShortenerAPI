@@ -59,7 +59,8 @@ func (dbc dbClient) GetOriginalURL(ctx context.Context, shortUrl string) (string
 	var baseURL string
 	err = dbc.db.QueryRowContext(ctx,
 		`SELECT base_url FROM shortUrls
-		 WHERE short_url = $1`,
+		 WHERE short_url = $1
+		 FOR UPDATE`,
 		shortUrl).Scan(&baseURL)
 
 	if err != nil {
@@ -72,4 +73,28 @@ func (dbc dbClient) GetOriginalURL(ctx context.Context, shortUrl string) (string
 	}
 
 	return baseURL, nil
+}
+
+func (dbc dbClient) ExpireURLs() error {
+
+	tx, err := dbc.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	_, err = dbc.db.ExecContext(context.Background(),
+		`DELETE FROM shortUrls
+		 WHERE created_at < NOW() - INTERVAL '1 YEAR'`)
+
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
