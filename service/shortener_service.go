@@ -39,7 +39,7 @@ func (ss shortenerService) ShortenURL(ctx context.Context, url string) (string, 
 		return "", err
 	}
 
-	return "http://" + tiny, nil
+	return "http://localhost:8080/short.io/" + tiny, nil
 }
 
 func hashAndCut(str string, size int) string {

@@ -47,3 +47,29 @@ func (dbc dbClient) PutNewURL(ctx context.Context, originalUrl, shortUrl string)
 
 	return nil
 }
+
+func (dbc dbClient) GetOriginalURL(ctx context.Context, shortUrl string) (string, error) {
+
+	tx, err := dbc.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var baseURL string
+	err = dbc.db.QueryRowContext(ctx,
+		`SELECT base_url FROM shortUrls
+		 WHERE short_url = $1`,
+		shortUrl).Scan(&baseURL)
+
+	if err != nil {
+		return "", err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return "", err
+	}
+
+	return baseURL, nil
+}
