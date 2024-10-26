@@ -19,7 +19,36 @@ func NewUrlStorage(db *sql.DB) dbClient {
 	}
 }
 
-func (dbc dbClient) PutNewURL(ctx context.Context, originalUrl, shortUrl string) (string, error) {
+func (dbc dbClient) PutNewURL(ctx context.Context, originalUrl, shortUrl string) error {
+
+	tx, err := dbc.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	_, err = dbc.db.ExecContext(ctx,
+		`INSERT INTO shortUrls(
+		 	base_url,
+		 	short_url,
+		 	created_at
+		 )
+		 VALUES ($1,$2,$3)`,
+		originalUrl, shortUrl, time.Now())
+
+	if err != nil {
+		return fmt.Errorf("failed to insert new url for %s in DB: %w", shortUrl, err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dbc dbClient) GetOriginalURL(ctx context.Context, shortUrl string) (string, error) {
 
 	tx, err := dbc.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -27,43 +56,14 @@ func (dbc dbClient) PutNewURL(ctx context.Context, originalUrl, shortUrl string)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var count int
+	var baseURL string
 	err = dbc.db.QueryRowContext(ctx,
-		`SELECT count(1)
-		 FROM shortUrls WHERE 
-		 shortUrls.short_url = $1`,
-		shortUrl,
-	).Scan(&count)
+		`SELECT base_url FROM shortUrls
+		 WHERE short_url = $1`,
+		shortUrl).Scan(&baseURL)
 
 	if err != nil {
-		return "", fmt.Errorf("failed to get if url exists for %s in DB: %w", shortUrl, err)
-	}
-
-	if count > 0 {
-		return "", ErrURLAlreadyExists
-	}
-
-	var ansUrl string
-	err = dbc.db.QueryRowContext(ctx,
-		`WITH ins AS (
-		 	INSERT INTO shortUrls(
-				base_url,
-				short_url,
-				created_at
-			)
-		 	VALUES ($1,$2,$3)
-			ON CONFLICT (base_url)
-		 	DO NOTHING
-		 	RETURNING short_url
-			)
-		 SELECT short_url FROM ins
-		 UNION  ALL
-		 SELECT short_url FROM shortUrls
-		 WHERE  base_url = $1`,
-		originalUrl, shortUrl, time.Now()).Scan(&ansUrl)
-
-	if err != nil {
-		return "", fmt.Errorf("failed to insert new url for %s in DB: %w", originalUrl, err)
+		return "", err
 	}
 
 	err = tx.Commit()
@@ -71,5 +71,5 @@ func (dbc dbClient) PutNewURL(ctx context.Context, originalUrl, shortUrl string)
 		return "", err
 	}
 
-	return ansUrl, nil
+	return baseURL, nil
 }

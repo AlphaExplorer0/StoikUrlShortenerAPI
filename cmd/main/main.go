@@ -108,13 +108,16 @@ func main() {
 
 	shortenerStorage := repository.NewUrlStorage(db)
 	shortenerService := service.NewShortenerService(logger, shortenerStorage)
+	redirectService := service.NewRedirectService(logger, shortenerStorage)
 	shortenerHandler := api.ShortenerHandler{Logger: logger, Service: shortenerService}
+	redirectHandler := api.RedirectHandler{Logger: logger, Service: redirectService}
 
 	router := gin.New()
 	router.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	router.Use(ginzap.RecoveryWithZap(logger, true))
 
 	router.POST("/api/url/shorten", shortenerHandler.Handle)
+	router.GET("/short.io/:key", redirectHandler.Handle)
 
 	logger.Fatal("url shortener service crashed", zap.Error(router.Run(fmt.Sprintf("%s:%s", config.ServerAddress, config.Port))))
 }
@@ -122,10 +125,10 @@ func main() {
 func initDBtables(db *sql.DB) error {
 	_, err := db.Exec(
 		`CREATE TABLE IF NOT EXISTS shortUrls (
-		 base_url TEXT PRIMARY KEY NOT NULL,
+		 id SERIAL PRIMARY KEY,
+		 base_url TEXT NOT NULL,
 		 short_url TEXT NOT NULL,
 		 created_at TIMESTAMPTZ,
-		 CONSTRAINT unique_base_url UNIQUE (base_url),
 		 CONSTRAINT unique_short_url UNIQUE (short_url)
 		 )`)
 
