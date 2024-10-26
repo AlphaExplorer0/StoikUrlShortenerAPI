@@ -21,6 +21,7 @@ paths:
                   description: url to shorten
       responses:
         '200':
+          description: Success
           content:
             application/json:
               schema:
@@ -31,5 +32,19 @@ paths:
                     description: shortened url
         '400':
           description: Some parameters are incorrect
+        '500':
+          description: Internal server error
+  /short.io/{key}:
+    get:
+      summary: Redirects from a short url generated to the original url
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '301':
+          description: Redirection successful
         '500':
           description: Internal server error
